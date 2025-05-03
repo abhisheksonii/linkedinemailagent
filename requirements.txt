@@ -1,0 +1,13 @@
+streamlit
+langchain
+openai
+pandas
+openpyxl
+selenium
+beautifulsoup4
+supabase
+pymongo
+python-dotenv
+asyncio
+webdriver-manager
+pdfplumber

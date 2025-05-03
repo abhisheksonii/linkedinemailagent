@@ -1,0 +1,7 @@
+2025/05/03-16:58:07.113 2374 Reusing MANIFEST C:\Users\abhis\Desktop\hitesh-assignment\chrome_profile\Default\IndexedDB\https_www.linkedin.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/05/03-16:58:07.114 2374 Recovering log #3
+2025/05/03-16:58:07.116 2374 Reusing old log C:\Users\abhis\Desktop\hitesh-assignment\chrome_profile\Default\IndexedDB\https_www.linkedin.com_0.indexeddb.leveldb/000003.log 
+2025/05/03-16:59:10.763 3c10 Level-0 table #5: started
+2025/05/03-16:59:10.837 3c10 Level-0 table #5: 18631 bytes OK
+2025/05/03-16:59:10.848 3c10 Delete type=0 #3
+2025/05/03-16:59:10.853 3c10 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

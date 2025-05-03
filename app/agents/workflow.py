@@ -1,0 +1,113 @@
+from app.agents.course_persona_agent import CoursePersonaAgent
+from app.scraping.linkedin_pdf_scraper_agent import LinkedInProfileTextScraperAgent
+from app.email_gen.email_generation_agent import EmailGenerationAgent
+from app.db.db_connector import SupabaseConnector, MongoDBConnector
+from app.utils.pdf_utils import extract_pdf_text
+import pandas as pd
+
+class OutreachWorkflow:
+    def __init__(self, db_type='supabase', linkedin_email=None, linkedin_password=None):
+        self.course_persona_agent = CoursePersonaAgent()
+        self.linkedin_scraper = LinkedInProfileTextScraperAgent()
+        self.email_agent = EmailGenerationAgent()
+        self.db = SupabaseConnector() if db_type == 'supabase' else MongoDBConnector()
+        self.linkedin_email = linkedin_email
+        self.linkedin_password = linkedin_password
+
+    def run(self, course_details: str, persona: str, user_df: pd.DataFrame):
+        import logging
+        logging.info("[Workflow] Loading course details and persona...")
+        self.course_persona_agent.load(course_details, persona)
+        context = self.course_persona_agent.get_context()
+        results = []
+        # Robust LinkedIn column detection (case-insensitive)
+        linkedin_col = None
+        for col in user_df.columns:
+            if col.strip().lower() in ['linkedin', 'linkedin_url', 'linkedin profile', 'profile_link', 'linkedinprofile']:
+                linkedin_col = col
+                break
+        if not linkedin_col:
+            print(f"No LinkedIn column found. Columns detected: {list(user_df.columns)}")
+            return []
+        # Login to LinkedIn if needed
+        if self.linkedin_email and self.linkedin_password:
+            self.linkedin_scraper.login_if_needed(self.linkedin_email, self.linkedin_password)
+        import random
+        for idx, row in user_df.iterrows():
+            import logging
+            linkedin_url = row.get(linkedin_col)
+            if not linkedin_url or not isinstance(linkedin_url, str) or not linkedin_url.strip():
+                logging.warning(f"[Workflow] Skipping row {idx+1}: No valid LinkedIn URL found.")
+                continue
+            logging.info(f"[Workflow] Processing row {idx+1} of {len(user_df)}.")
+            name_hint = row.get('First Name', '') + row.get('Last Name', '')
+            profile_result = self.linkedin_scraper.scrape_profile_text(linkedin_url.strip(), user_name_hint=name_hint)
+            profile_text = profile_result.get('profile_text', '')
+            profile_error = profile_result.get('error', '')
+            if profile_error:
+                logging.error(f"[Workflow] Error scraping profile for row {idx+1}: {profile_error}")
+            # Get the email address for this user from the uploaded file
+            email_value = None
+            for possible_email_col in ['email', 'Email', 'EMAIL']:
+                if possible_email_col in row and pd.notnull(row[possible_email_col]):
+                    email_value = row[possible_email_col]
+                    break
+            # Save user data for database insertion
+            name_value = row.get('First Name') or row.get('Name') or row.get('name')
+            db_record = {
+                'name': name_value,
+                'email': email_value,
+                'linkedin_url': linkedin_url,
+                'email_draft': '',
+                'profile_text': profile_text,
+                'profile_error': profile_error,
+                'email_error': ''
+            }
+            try:
+                logging.info(f"[Workflow] Inserting scraped data for row {idx+1} into database...")
+                self.db.insert('outreach_results', db_record)
+                logging.info(f"[Workflow] Successfully inserted row {idx+1} into database.")
+            except Exception as e:
+                logging.error(f"[Workflow] Database insert failed for row {idx+1}: {e}")
+            # Prepare user profile data for email generation
+            profile = {
+                'profile_text': profile_text
+            }
+            email = ''
+            email_error = ''
+            if profile_text and not profile_error:
+                try:
+                    # Generate an email draft based on the user's profile and course context
+                    email = self.email_agent.generate_email(context, profile)
+                    logging.info(f"[Workflow] Email draft generated for row {idx+1}.")
+                except Exception as e:
+                    email_error = f"Email generation error: {e}"
+                    logging.error(f"[Workflow] Email generation failed for row {idx+1}: {e}")
+            # Add the email draft to the results list and insert into the drafted emails table
+            result = {
+                'name': db_record['name'],
+                'email': db_record['email'],
+                'linkedin_url': linkedin_url,
+                'email_draft': email,
+                'profile_error': profile_error,
+                'email_error': email_error
+            }
+            results.append(result)
+            try:
+                self.db.insert('drafted_emails', {
+                    'name': name_value,
+                    'email': email_value,
+                    'email_draft': email
+                })
+            except Exception as e:
+                logging.error(f"[Workflow] Failed to insert drafted email for row {idx+1}: {e}")
+            # Wait 1-2 seconds between requests to avoid rate-limiting
+            import time
+            import random
+            delay = random.uniform(1, 2)
+            logging.info(f"[Workflow] Waiting {delay:.2f} seconds before next profile...")
+            time.sleep(delay)
+        self.linkedin_scraper.close()
+        if not results:
+            print(f"No valid LinkedIn URLs found in column '{linkedin_col}'.")
+        return results
