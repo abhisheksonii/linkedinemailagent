@@ -55,5 +55,3 @@ This application helps you automate personalized email outreach to potential lea
 - If scraping fails, check your LinkedIn login or network connection.
 - If emails are not sending, ensure your Gmail App Password is valid and you have not hit sending limits.
 
-## License
-MIT
