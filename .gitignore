@@ -27,6 +27,8 @@ ENV/
 
 # Environment variables
 .env
+# Do NOT ignore secrets.toml for Streamlit Cloud deployment
+secrets.toml
 
 # IDE specific files
 .idea/

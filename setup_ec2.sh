@@ -1,5 +1,5 @@
 #!/bin/bash
-# Automated EC2 setup for Streamlit + Selenium Docker app
+# Automated EC2 setup for Streamlit + Bright Data API Docker app (no Selenium/Chrome required)
 set -e
 
 # Install Docker

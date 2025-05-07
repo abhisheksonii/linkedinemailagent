@@ -7,18 +7,10 @@ class EmailGenerationAgent:
     Generates personalized emails using the Claude API, based on the provided context and profile data.
     """
     def __init__(self):
-        self.api_key = os.getenv('CLAUDE_API_KEY') or os.getenv('ANTHROPIC_API_KEY') or self._try_env_fallback()
+        import streamlit as st
+        self.api_key = st.secrets.get('CLAUDE_API_KEY') or st.secrets.get('ANTHROPIC_API_KEY')
         self.api_url = 'https://api.anthropic.com/v1/messages'
         self.model = 'claude-3-5-haiku-20241022'  # Or another Claude model
-
-    def _try_env_fallback(self):
-        # Load API key from .env if not found in environment variables
-        try:
-            from dotenv import load_dotenv
-            load_dotenv()
-            return os.getenv('CLAUDE_API_KEY') or os.getenv('ANTHROPIC_API_KEY')
-        except ImportError:
-            return None
 
     def _clean_and_summarize_profile_text(self, profile_text: str) -> str:
         """
@@ -42,10 +34,13 @@ class EmailGenerationAgent:
         return cleaned
 
     def generate_email(self, context: Dict[str, str], profile: Dict[str, str]) -> str:
-        # Clean and summarize the scraped profile text
-        profile_text = profile.get('profile_text', '')
-        summarized_profile = self._clean_and_summarize_profile_text(profile_text)
-        prompt = self._build_prompt(context, summarized_profile)
+        import logging
+        import json
+        # Use the full LinkedIn JSON profile
+        profile_json = profile.get('profile_json', {})
+        profile_json_str = json.dumps(profile_json, indent=2, ensure_ascii=False)
+        prompt = self._build_prompt(context, profile_json_str)
+        logging.info(f"[EmailGenerationAgent] Sending prompt to Claude: {prompt}")
         headers = {
             'x-api-key': self.api_key,
             'anthropic-version': '2023-06-01',
@@ -59,18 +54,19 @@ class EmailGenerationAgent:
             ]
         }
         resp = requests.post(self.api_url, headers=headers, json=data)
+        logging.info(f"[EmailGenerationAgent] Claude API response: {resp.status_code} {resp.text}")
         if resp.status_code == 200:
             return resp.json().get('content', [{}])[0].get('text', '').strip()
         else:
             return f"[Error from Claude API: {resp.status_code}] {resp.text}"
 
-    def _build_prompt(self, context: Dict[str, str], summarized_profile_text: str) -> str:
+    def _build_prompt(self, context: Dict[str, str], profile_json_str: str) -> str:
         # Prompt tells Claude to return only the outreach email draft, without extra comments
         return f"""
 You are an expert outreach copywriter. Write a hyper-personalized cold outreach email draft for a prospective learner using:
 - The course or offering details
 - The target persona
-- The summarized LinkedIn profile text below
+- The full LinkedIn profile JSON below
 
 Return ONLY the outreach email draft. Do NOT include any comments, explanations, or extra text.
 
@@ -80,6 +76,6 @@ Course Details:
 Persona:
 {context['persona']}
 
-Summarized LinkedIn Profile:
-{summarized_profile_text}
+LinkedIn Profile JSON:
+{profile_json_str}
 """

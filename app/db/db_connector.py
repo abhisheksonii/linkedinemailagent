@@ -1,11 +1,11 @@
-import os
+import streamlit as st
 from typing import Any, Dict
 
 class SupabaseConnector:
     def __init__(self):
         from supabase import create_client, Client
-        self.url = os.getenv('SUPABASE_URL')
-        self.key = os.getenv('SUPABASE_KEY')
+        self.url = st.secrets["SUPABASE_URL"]
+        self.key = st.secrets["SUPABASE_KEY"]
         self.client: Client = create_client(self.url, self.key)
 
     def insert(self, table: str, record: Dict[str, Any]):
@@ -26,9 +26,9 @@ class SupabaseConnector:
 class MongoDBConnector:
     def __init__(self):
         from pymongo import MongoClient
-        self.url = os.getenv('MONGODB_URL', 'mongodb://localhost:27017/')
+        self.url = st.secrets.get('MONGODB_URL', 'mongodb://localhost:27017/')
         self.client = MongoClient(self.url)
-        self.db = self.client[os.getenv('MONGODB_DB', 'email_agent')]
+        self.db = self.client[st.secrets.get('MONGODB_DB', 'email_agent')]
 
     def insert(self, collection: str, record: Dict[str, Any]):
         return self.db[collection].insert_one(record)

@@ -1,10 +1,15 @@
-# Use Selenium's official Chrome image with Python pre-installed
+FROM python:3.10-slim
 
 USER root
 
-# Install Python and pip (if not present) and Streamlit dependencies
+# Install Chrome and system dependencies for Selenium/ChromeDriver
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip
+    apt-get install -y wget gnupg2 unzip fonts-liberation libnss3 libxss1 libgconf-2-4 libappindicator3-1 libasound2 libatk-bridge2.0-0 libgtk-3-0 libgbm1 && \
+    wget -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get install -y /tmp/chrome.deb && \
+    rm /tmp/chrome.deb && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
 WORKDIR /usr/src/app

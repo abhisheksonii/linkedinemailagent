@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import streamlit as st
 import pandas as pd
 
@@ -49,9 +51,7 @@ import io
 if 'results' not in st.session_state:
     st.session_state['results'] = None
 
-st.header("LinkedIn Login Details")
-linkedin_email = st.text_input("LinkedIn Email", type="default")
-linkedin_password = st.text_input("LinkedIn Password", type="password")
+# LinkedIn Login Details section removed. No login required with Bright Data API.
 
 st.header("Gmail Credentials for Sending Emails")
 if 'sender_email' not in st.session_state:
@@ -60,8 +60,52 @@ if 'app_password' not in st.session_state:
     st.session_state['app_password'] = ''
 sender_email = st.text_input("Your Gmail Address (sender)", value=st.session_state['sender_email'], key="sender_email_input")
 st.session_state['sender_email'] = sender_email
-app_password = st.text_input("Gmail App Password (see instructions)", type="password", value=st.session_state['app_password'], key="app_password_input")
+# Gmail App Password input with clickable instructions
+import streamlit.components.v1 as components
+
+def show_gmail_instructions():
+    st.markdown("""
+**How to create a Gmail App Password:**
+1. Go to your Google Account.
+2. Select **Security**.
+3. Under "Signing in to Google," select **2-Step Verification**.
+4. At the bottom of the page, select **App passwords**.
+5. Enter a name that helps you remember where you’ll use the app password.
+6. Select **Generate**.
+7. To enter the app password, follow the instructions on your screen. The app password is the 16-character code that generates on your device.
+8. Select **Done**.
+
+Alternatively, you can create an app password by logging in to your Google account and going to [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+    """)
+
+if 'show_gmail_popup' not in st.session_state:
+    st.session_state['show_gmail_popup'] = False
+
+def gmail_label():
+    return ("Gmail App Password ("
+            "<a href='#' style='color:#1a73e8;text-decoration:underline;' onclick=\"window.parent.postMessage('show_gmail_popup','*')\">see instructions</a>)", True)
+
+# Custom HTML/JS to trigger Streamlit state change for modal
+components.html('''
+<script>
+window.addEventListener('message', function(event) {
+    if (event.data === 'show_gmail_popup') {
+        window.parent.streamlitSend({type:'streamlit:setComponentValue', value:true, key:'show_gmail_popup'});
+    }
+});
+</script>
+''', height=0)
+
+label_html, _ = gmail_label()
+st.markdown(label_html, unsafe_allow_html=True)
+app_password = st.text_input("Gmail App Password", type="password", value=st.session_state['app_password'], key="app_password_input", help="Click 'see instructions' for Gmail App Password setup.")
 st.session_state['app_password'] = app_password
+if st.session_state.get('show_gmail_popup', False):
+    with st.container():
+        st.info("**Gmail App Password Instructions**")
+        show_gmail_instructions()
+        if st.button("Close Instructions", key="close_gmail_popup"):
+            st.session_state['show_gmail_popup'] = False
 
 progress_placeholder = st.empty()
 error_placeholder = st.empty()
@@ -69,29 +113,39 @@ error_placeholder = st.empty()
 if st.button("Start Workflow"):
     if not st.session_state['course_details'] or not st.session_state['persona'] or st.session_state['user_df'] is None:
         st.error("Please fill in all fields and upload a valid Excel file before starting.")
-    elif not linkedin_email or not linkedin_password:
-        st.error("Please enter your LinkedIn credentials.")
     elif not sender_email or not app_password:
         st.error("Please enter your Gmail credentials for sending emails.")
     else:
-        st.info("Running workflow. This may take a few minutes...")
-        workflow = OutreachWorkflow(db_type='supabase', linkedin_email=linkedin_email, linkedin_password=linkedin_password)
         user_df = st.session_state['user_df']
         if user_df.shape[0] == 0:
             st.error("No rows found in the uploaded file.")
         else:
-            try:
-                progress_placeholder.progress(0, text=f"Processing 0/{user_df.shape[0]}...")
-                results = workflow.run(
-                    st.session_state['course_details'],
-                    st.session_state['persona'],
-                    user_df
-                )
-                st.session_state['results'] = results
-            except Exception as e:
-                error_placeholder.error(f"Error processing rows: {e}")
-            progress_placeholder.empty()
-            error_placeholder.empty()
+            import time
+            import math
+            # Estimate wait time: 25s per batch of 10 LinkedIn URLs
+            num_urls = user_df.shape[0]
+            batch_size = 10
+            est_batch_time = 25  # seconds per batch
+            total_batches = math.ceil(num_urls / batch_size)
+            est_total_time = total_batches * est_batch_time
+            with st.spinner(f"Fetching LinkedIn profiles and generating emails... Estimated time: {est_total_time} seconds for {num_urls} profiles."):
+                start_time = time.time()
+                workflow = OutreachWorkflow(db_type='supabase')
+                try:
+                    progress_placeholder.progress(0, text=f"Processing 0/{user_df.shape[0]}...")
+                    results = workflow.run(
+                        st.session_state['course_details'],
+                        st.session_state['persona'],
+                        user_df
+                    )
+                    st.session_state['results'] = results
+                except Exception as e:
+                    error_placeholder.error(f"Error processing rows: {e}")
+                finally:
+                    elapsed = int(time.time() - start_time)
+                    st.success(f"Done! Actual time: {elapsed} seconds.")
+                progress_placeholder.empty()
+                error_placeholder.empty()
 
 if st.session_state['results'] is not None:
     st.success(f"Generated {len(st.session_state['results'])} personalized emails!")
@@ -164,5 +218,8 @@ if st.session_state['results'] is not None:
             send_status.error(f"Failed to send to: {', '.join([f[0] for f in failures])}")
 
     if st.button("Do it Again", key="do_it_again_button"):
+        for key in list(st.session_state.keys()):
+            if key not in ['course_details', 'persona', 'sender_email', 'app_password', 'user_df']:
+                del st.session_state[key]
         st.session_state['results'] = None
-        st.experimental_rerun()
+        st.rerun()
