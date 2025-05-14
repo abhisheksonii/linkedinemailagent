@@ -132,6 +132,7 @@ if st.session_state['results'] is not None:
     # --- End Gmail Credentials Section ---
 
     # Show Send Emails button after credentials are entered
+    # Ensure preview_df is defined above this block
     if sender_email and app_password:
         send_status = st.empty()
         log_area = st.empty()
@@ -297,6 +298,7 @@ Alternatively, you can create an app password by logging in to your Google accou
     # --- End Gmail Credentials Section ---
 
     # Show Send Emails button after credentials are entered
+    # Ensure preview_df is defined above this block
     if sender_email and app_password:
         send_status = st.empty()
         log_area = st.empty()
