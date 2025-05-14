@@ -133,7 +133,7 @@ if st.session_state['results'] is not None:
 
     send_status = st.empty()
     log_area = st.empty()
-    if st.button("Send Emails", key="send_emails_button"):
+    if st.button("Send Emails", key="send_emails_button_results"):
         import smtplib
         from email.mime.text import MIMEText
         import traceback
@@ -262,7 +262,7 @@ Alternatively, you can create an app password by logging in to your Google accou
 
     send_status = st.empty()
     log_area = st.empty()
-    if st.button("Send Emails", key="send_emails_button"):
+    if st.button("Send Emails", key="send_emails_button_results"):
         import smtplib
         from email.mime.text import MIMEText
         import traceback
