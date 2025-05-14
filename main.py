@@ -47,6 +47,8 @@ st.markdown("---")
 from app.agents.workflow import OutreachWorkflow
 import io
 
+# NOTE: If you get a 401 Unauthorized from Bright Data API, check your BRIGHTDATA_API_KEY in .env or Streamlit secrets!
+
 # Store results for later use
 if 'results' not in st.session_state:
     st.session_state['results'] = None
@@ -99,14 +101,15 @@ if st.session_state['results'] is not None:
         st.session_state['sender_email'] = ''
     if 'app_password' not in st.session_state:
         st.session_state['app_password'] = ''
-    sender_email = st.text_input("Your Gmail Address (sender)", value=st.session_state['sender_email'], key="sender_email_input")
+    # Only render these fields here, after results, and with unique keys
+    sender_email = st.text_input("Your Gmail Address (sender)", value=st.session_state['sender_email'], key="sender_email_input_results")
     st.session_state['sender_email'] = sender_email
     def gmail_label():
         return ("Gmail App Password ("
                 "<a href='#' style='color:#1a73e8;text-decoration:underline;' onclick=\"window.parent.postMessage('show_gmail_popup','*')\">see instructions</a>)", True)
     label_html, _ = gmail_label()
     st.markdown(label_html, unsafe_allow_html=True)
-    app_password = st.text_input("Gmail App Password", type="password", value=st.session_state['app_password'], key="app_password_input", help="Click 'see instructions' for Gmail App Password setup.")
+    app_password = st.text_input("Gmail App Password", type="password", value=st.session_state['app_password'], key="app_password_input_results", help="Click 'see instructions' for Gmail App Password setup.")
     st.session_state['app_password'] = app_password
     import streamlit.components.v1 as components
     if 'show_gmail_popup' not in st.session_state:
