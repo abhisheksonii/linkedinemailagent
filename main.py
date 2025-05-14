@@ -131,21 +131,7 @@ if st.session_state['results'] is not None:
                 st.session_state['show_gmail_popup'] = False
     # --- End Gmail Credentials Section ---
 
-    send_status = st.empty()
-    log_area = st.empty()
-    if st.button("Send Emails", key="send_emails_button_results"):
-        import smtplib
-        from email.mime.text import MIMEText
-        import traceback
-        successes = []
-        failures = []
-        sender_email = st.session_state.get('sender_email', '')
-        app_password = st.session_state.get('app_password', '')
-        logs = []
-        try:
-            logs.append("Connecting to Gmail SMTP server...")
-            log_area.info("\n".join(logs))
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+
                 logs.append("Logging in as {}...".format(sender_email))
                 log_area.info("\n".join(logs))
                 server.login(sender_email, app_password)
@@ -250,8 +236,7 @@ Alternatively, you can create an app password by logging in to your Google accou
 
     label_html, _ = gmail_label()
     st.markdown(label_html, unsafe_allow_html=True)
-    app_password = st.text_input("Gmail App Password", type="password", value=st.session_state['app_password'], key="app_password_input", help="Click 'see instructions' for Gmail App Password setup.")
-    st.session_state['app_password'] = app_password
+    # Removed duplicate Gmail App Password input and Send Emails button here to avoid StreamlitDuplicateElementKey error
     if st.session_state.get('show_gmail_popup', False):
         with st.container():
             st.info("**Gmail App Password Instructions**")
@@ -260,21 +245,7 @@ Alternatively, you can create an app password by logging in to your Google accou
                 st.session_state['show_gmail_popup'] = False
     # --- End Gmail Credentials Section ---
 
-    send_status = st.empty()
-    log_area = st.empty()
-    if st.button("Send Emails", key="send_emails_button_results"):
-        import smtplib
-        from email.mime.text import MIMEText
-        import traceback
-        successes = []
-        failures = []
-        sender_email = st.session_state.get('sender_email', '')
-        app_password = st.session_state.get('app_password', '')
-        logs = []
-        try:
-            logs.append("Connecting to Gmail SMTP server...")
-            log_area.info("\n".join(logs))
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+
                 logs.append("Logging in as {}...".format(sender_email))
                 log_area.info("\n".join(logs))
                 server.login(sender_email, app_password)
