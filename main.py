@@ -59,8 +59,6 @@ error_placeholder = st.empty()
 if st.button("Start Workflow"):
     if not st.session_state['course_details'] or not st.session_state['persona'] or st.session_state['user_df'] is None:
         st.error("Please fill in all fields and upload a valid Excel file before starting.")
-    elif not sender_email or not app_password:
-        st.error("Please enter your Gmail credentials for sending emails.")
     else:
         user_df = st.session_state['user_df']
         if user_df.shape[0] == 0:
