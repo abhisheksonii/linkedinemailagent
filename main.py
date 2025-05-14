@@ -131,6 +131,53 @@ if st.session_state['results'] is not None:
                 st.session_state['show_gmail_popup'] = False
     # --- End Gmail Credentials Section ---
 
+    # Show Send Emails button after credentials are entered
+    if sender_email and app_password:
+        send_status = st.empty()
+        log_area = st.empty()
+        if st.button("Send Emails", key="send_emails_button_results"):
+            import smtplib
+            from email.mime.text import MIMEText
+            import traceback
+            successes = []
+            failures = []
+            logs = []
+            try:
+                logs.append("Connecting to Gmail SMTP server...")
+                log_area.info("\n".join(logs))
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    logs.append(f"Logging in as {sender_email}...")
+                    log_area.info("\n".join(logs))
+                    server.login(sender_email, app_password)
+                    logs.append("Login successful. Sending emails...")
+                    log_area.info("\n".join(logs))
+                    for idx, row in preview_df.iterrows():
+                        recipient = row['Email']
+                        subject = row['Email Subject']
+                        body = row['Email Body']
+                        try:
+                            logs.append(f"Sending to {recipient} (subject: {subject})...")
+                            log_area.info("\n".join(logs))
+                            msg = MIMEText(body, "plain")
+                            msg["Subject"] = subject or "Personalized Outreach"
+                            msg["From"] = sender_email
+                            msg["To"] = recipient
+                            server.sendmail(sender_email, recipient, msg.as_string())
+                            successes.append(recipient)
+                            logs.append(f"✅ Sent to {recipient}")
+                        except Exception as e:
+                            failures.append((recipient, str(e)))
+                            logs.append(f"❌ Failed to send to {recipient}: {e}")
+                        log_area.info("\n".join(logs))
+                    logs.append("All emails processed.")
+                    log_area.info("\n".join(logs))
+            except Exception as e:
+                logs.append(f"Critical error: {e}\n{traceback.format_exc()}")
+                log_area.error("\n".join(logs))
+            send_status.success(f"Sent {len(successes)} emails successfully.")
+            if failures:
+                send_status.error(f"Failed to send to: {', '.join([f[0] for f in failures])}")
+
 
         try:
             logs.append("Connecting to Gmail SMTP server...")
@@ -248,6 +295,53 @@ Alternatively, you can create an app password by logging in to your Google accou
             if st.button("Close Instructions", key="close_gmail_popup"):
                 st.session_state['show_gmail_popup'] = False
     # --- End Gmail Credentials Section ---
+
+    # Show Send Emails button after credentials are entered
+    if sender_email and app_password:
+        send_status = st.empty()
+        log_area = st.empty()
+        if st.button("Send Emails", key="send_emails_button_results"):
+            import smtplib
+            from email.mime.text import MIMEText
+            import traceback
+            successes = []
+            failures = []
+            logs = []
+            try:
+                logs.append("Connecting to Gmail SMTP server...")
+                log_area.info("\n".join(logs))
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    logs.append(f"Logging in as {sender_email}...")
+                    log_area.info("\n".join(logs))
+                    server.login(sender_email, app_password)
+                    logs.append("Login successful. Sending emails...")
+                    log_area.info("\n".join(logs))
+                    for idx, row in preview_df.iterrows():
+                        recipient = row['Email']
+                        subject = row['Email Subject']
+                        body = row['Email Body']
+                        try:
+                            logs.append(f"Sending to {recipient} (subject: {subject})...")
+                            log_area.info("\n".join(logs))
+                            msg = MIMEText(body, "plain")
+                            msg["Subject"] = subject or "Personalized Outreach"
+                            msg["From"] = sender_email
+                            msg["To"] = recipient
+                            server.sendmail(sender_email, recipient, msg.as_string())
+                            successes.append(recipient)
+                            logs.append(f"✅ Sent to {recipient}")
+                        except Exception as e:
+                            failures.append((recipient, str(e)))
+                            logs.append(f"❌ Failed to send to {recipient}: {e}")
+                        log_area.info("\n".join(logs))
+                    logs.append("All emails processed.")
+                    log_area.info("\n".join(logs))
+            except Exception as e:
+                logs.append(f"Critical error: {e}\n{traceback.format_exc()}")
+                log_area.error("\n".join(logs))
+            send_status.success(f"Sent {len(successes)} emails successfully.")
+            if failures:
+                send_status.error(f"Failed to send to: {', '.join([f[0] for f in failures])}")
 
 
         try:
