@@ -53,60 +53,6 @@ if 'results' not in st.session_state:
 
 # LinkedIn Login Details section removed. No login required with Bright Data API.
 
-st.header("Gmail Credentials for Sending Emails")
-if 'sender_email' not in st.session_state:
-    st.session_state['sender_email'] = ''
-if 'app_password' not in st.session_state:
-    st.session_state['app_password'] = ''
-sender_email = st.text_input("Your Gmail Address (sender)", value=st.session_state['sender_email'], key="sender_email_input")
-st.session_state['sender_email'] = sender_email
-# Gmail App Password input with clickable instructions
-import streamlit.components.v1 as components
-
-def show_gmail_instructions():
-    st.markdown("""
-**How to create a Gmail App Password:**
-1. Go to your Google Account.
-2. Select **Security**.
-3. Under "Signing in to Google," select **2-Step Verification**.
-4. At the bottom of the page, select **App passwords**.
-5. Enter a name that helps you remember where you’ll use the app password.
-6. Select **Generate**.
-7. To enter the app password, follow the instructions on your screen. The app password is the 16-character code that generates on your device.
-8. Select **Done**.
-
-Alternatively, you can create an app password by logging in to your Google account and going to [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-    """)
-
-if 'show_gmail_popup' not in st.session_state:
-    st.session_state['show_gmail_popup'] = False
-
-def gmail_label():
-    return ("Gmail App Password ("
-            "<a href='#' style='color:#1a73e8;text-decoration:underline;' onclick=\"window.parent.postMessage('show_gmail_popup','*')\">see instructions</a>)", True)
-
-# Custom HTML/JS to trigger Streamlit state change for modal
-components.html('''
-<script>
-window.addEventListener('message', function(event) {
-    if (event.data === 'show_gmail_popup') {
-        window.parent.streamlitSend({type:'streamlit:setComponentValue', value:true, key:'show_gmail_popup'});
-    }
-});
-</script>
-''', height=0)
-
-label_html, _ = gmail_label()
-st.markdown(label_html, unsafe_allow_html=True)
-app_password = st.text_input("Gmail App Password", type="password", value=st.session_state['app_password'], key="app_password_input", help="Click 'see instructions' for Gmail App Password setup.")
-st.session_state['app_password'] = app_password
-if st.session_state.get('show_gmail_popup', False):
-    with st.container():
-        st.info("**Gmail App Password Instructions**")
-        show_gmail_instructions()
-        if st.button("Close Instructions", key="close_gmail_popup"):
-            st.session_state['show_gmail_popup'] = False
-
 progress_placeholder = st.empty()
 error_placeholder = st.empty()
 
@@ -153,8 +99,15 @@ if st.session_state['results'] is not None:
     def split_subject_body(draft):
         if draft and ("\n" in draft or "\r" in draft):
             first_line, *rest = draft.splitlines()
-            return first_line.strip(), "\n".join(rest).strip()
-        return draft.strip(), ""
+            # Remove 'subject:' or similar prefix from the subject line if present
+            subject = first_line.strip()
+            if subject.lower().startswith('subject:'):
+                subject = subject[len('subject:'):].strip()
+            return subject, "\n".join(rest).strip()
+        subject = draft.strip()
+        if subject.lower().startswith('subject:'):
+            subject = subject[len('subject:'):].strip()
+        return subject, ""
 
     preview_df = pd.DataFrame([
         {
@@ -170,6 +123,61 @@ if st.session_state['results'] is not None:
 
     st.markdown("---")
     st.subheader("Send Drafted Emails via Gmail")
+
+    # --- Gmail Credentials Section (moved here) ---
+    import streamlit.components.v1 as components
+    if 'sender_email' not in st.session_state:
+        st.session_state['sender_email'] = ''
+    if 'app_password' not in st.session_state:
+        st.session_state['app_password'] = ''
+    sender_email = st.text_input("Your Gmail Address (sender)", value=st.session_state['sender_email'], key="sender_email_input")
+    st.session_state['sender_email'] = sender_email
+
+    def show_gmail_instructions():
+        st.markdown("""
+**How to create a Gmail App Password:**
+1. Go to your Google Account.
+2. Select **Security**.
+3. Under "Signing in to Google," select **2-Step Verification**.
+4. At the bottom of the page, select **App passwords**.
+5. Enter a name that helps you remember where you’ll use the app password.
+6. Select **Generate**.
+7. To enter the app password, follow the instructions on your screen. The app password is the 16-character code that generates on your device.
+8. Select **Done**.
+
+Alternatively, you can create an app password by logging in to your Google account and going to [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+        """)
+
+    if 'show_gmail_popup' not in st.session_state:
+        st.session_state['show_gmail_popup'] = False
+
+    def gmail_label():
+        return ("Gmail App Password ("
+                "<a href='#' style='color:#1a73e8;text-decoration:underline;' onclick=\"window.parent.postMessage('show_gmail_popup','*')\">see instructions</a>)", True)
+
+    # Custom HTML/JS to trigger Streamlit state change for modal
+    components.html('''
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data === 'show_gmail_popup') {
+            window.parent.streamlitSend({type:'streamlit:setComponentValue', value:true, key:'show_gmail_popup'});
+        }
+    });
+    </script>
+    ''', height=0)
+
+    label_html, _ = gmail_label()
+    st.markdown(label_html, unsafe_allow_html=True)
+    app_password = st.text_input("Gmail App Password", type="password", value=st.session_state['app_password'], key="app_password_input", help="Click 'see instructions' for Gmail App Password setup.")
+    st.session_state['app_password'] = app_password
+    if st.session_state.get('show_gmail_popup', False):
+        with st.container():
+            st.info("**Gmail App Password Instructions**")
+            show_gmail_instructions()
+            if st.button("Close Instructions", key="close_gmail_popup"):
+                st.session_state['show_gmail_popup'] = False
+    # --- End Gmail Credentials Section ---
+
     send_status = st.empty()
     log_area = st.empty()
     if st.button("Send Emails", key="send_emails_button"):
