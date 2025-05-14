@@ -96,6 +96,87 @@ if st.button("Start Workflow"):
 if st.session_state['results'] is not None:
     st.success(f"Generated {len(st.session_state['results'])} personalized emails!")
 
+    # --- Gmail Credentials Section (show only after workflow) ---
+    if 'sender_email' not in st.session_state:
+        st.session_state['sender_email'] = ''
+    if 'app_password' not in st.session_state:
+        st.session_state['app_password'] = ''
+    sender_email = st.text_input("Your Gmail Address (sender)", value=st.session_state['sender_email'], key="sender_email_input")
+    st.session_state['sender_email'] = sender_email
+    def gmail_label():
+        return ("Gmail App Password ("
+                "<a href='#' style='color:#1a73e8;text-decoration:underline;' onclick=\"window.parent.postMessage('show_gmail_popup','*')\">see instructions</a>)", True)
+    label_html, _ = gmail_label()
+    st.markdown(label_html, unsafe_allow_html=True)
+    app_password = st.text_input("Gmail App Password", type="password", value=st.session_state['app_password'], key="app_password_input", help="Click 'see instructions' for Gmail App Password setup.")
+    st.session_state['app_password'] = app_password
+    import streamlit.components.v1 as components
+    if 'show_gmail_popup' not in st.session_state:
+        st.session_state['show_gmail_popup'] = False
+    components.html('''
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data === 'show_gmail_popup') {
+            window.parent.streamlitSend({type:'streamlit:setComponentValue', value:true, key:'show_gmail_popup'});
+        }
+    });
+    </script>
+    ''', height=0)
+    if st.session_state.get('show_gmail_popup', False):
+        with st.container():
+            st.info("**Gmail App Password Instructions**")
+            show_gmail_instructions()
+            if st.button("Close Instructions", key="close_gmail_popup"):
+                st.session_state['show_gmail_popup'] = False
+    # --- End Gmail Credentials Section ---
+
+    send_status = st.empty()
+    log_area = st.empty()
+    if st.button("Send Emails", key="send_emails_button"):
+        import smtplib
+        from email.mime.text import MIMEText
+        import traceback
+        successes = []
+        failures = []
+        sender_email = st.session_state.get('sender_email', '')
+        app_password = st.session_state.get('app_password', '')
+        logs = []
+        try:
+            logs.append("Connecting to Gmail SMTP server...")
+            log_area.info("\n".join(logs))
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                logs.append("Logging in as {}...".format(sender_email))
+                log_area.info("\n".join(logs))
+                server.login(sender_email, app_password)
+                logs.append("Login successful. Sending emails...")
+                log_area.info("\n".join(logs))
+                for idx, row in preview_df.iterrows():
+                    recipient = row['Email']
+                    subject = row['Email Subject']
+                    body = row['Email Body']
+                    try:
+                        logs.append(f"Sending to {recipient} (subject: {subject})...")
+                        log_area.info("\n".join(logs))
+                        msg = MIMEText(body, "plain")
+                        msg["Subject"] = subject or "Personalized Outreach"
+                        msg["From"] = sender_email
+                        msg["To"] = recipient
+                        server.sendmail(sender_email, recipient, msg.as_string())
+                        successes.append(recipient)
+                        logs.append(f"✅ Sent to {recipient}")
+                    except Exception as e:
+                        failures.append((recipient, str(e)))
+                        logs.append(f"❌ Failed to send to {recipient}: {e}")
+                    log_area.info("\n".join(logs))
+                logs.append("All emails processed.")
+                log_area.info("\n".join(logs))
+        except Exception as e:
+            logs.append(f"Critical error: {e}\n{traceback.format_exc()}")
+            log_area.error("\n".join(logs))
+        send_status.success(f"Sent {len(successes)} emails successfully.")
+        if failures:
+            send_status.error(f"Failed to send to: {', '.join([f[0] for f in failures])}")
+
     def split_subject_body(draft):
         if draft and ("\n" in draft or "\r" in draft):
             first_line, *rest = draft.splitlines()
