@@ -132,15 +132,6 @@ if st.session_state['results'] is not None:
     # --- End Gmail Credentials Section ---
 
 
-    if st.button("Send Emails", key="send_emails_button_results"):
-        import smtplib
-        from email.mime.text import MIMEText
-        import traceback
-        successes = []
-        failures = []
-        sender_email = st.session_state.get('sender_email', '')
-        app_password = st.session_state.get('app_password', '')
-        logs = []
         try:
             logs.append("Connecting to Gmail SMTP server...")
             log_area.info("\n".join(logs))
@@ -259,15 +250,6 @@ Alternatively, you can create an app password by logging in to your Google accou
     # --- End Gmail Credentials Section ---
 
 
-    if st.button("Send Emails", key="send_emails_button_results"):
-        import smtplib
-        from email.mime.text import MIMEText
-        import traceback
-        successes = []
-        failures = []
-        sender_email = st.session_state.get('sender_email', '')
-        app_password = st.session_state.get('app_password', '')
-        logs = []
         try:
             logs.append("Connecting to Gmail SMTP server...")
             log_area.info("\n".join(logs))
