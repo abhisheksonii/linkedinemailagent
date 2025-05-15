@@ -77,6 +77,7 @@ if st.button("Start Workflow"):
             with st.spinner(f"Fetching LinkedIn profiles and generating emails... Estimated time: {est_total_time} seconds for {num_urls} profiles."):
                 start_time = time.time()
                 workflow = OutreachWorkflow(db_type='supabase')
+                logs = []  # Always initialize logs before use
                 try:
                     progress_placeholder.progress(0, text=f"Processing 0/{user_df.shape[0]}...")
                     results = workflow.run(
@@ -136,14 +137,16 @@ if st.session_state['results'] is not None:
     if sender_email and app_password:
         send_status = st.empty()
         log_area = st.empty()
-        if st.button("Send Emails", key="send_emails_button_results"):
+        # Unique key for pre-results button
+if st.button("Send Emails", key="send_emails_button_before_results"):
             import smtplib
             from email.mime.text import MIMEText
             import traceback
             successes = []
             failures = []
             logs = []
-            try:
+            logs = []  # Always initialize logs before use
+try:
                 logs.append("Connecting to Gmail SMTP server...")
                 log_area.info("\n".join(logs))
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -180,41 +183,6 @@ if st.session_state['results'] is not None:
                 send_status.error(f"Failed to send to: {', '.join([f[0] for f in failures])}")
 
 
-        try:
-            logs.append("Connecting to Gmail SMTP server...")
-            log_area.info("\n".join(logs))
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                logs.append("Logging in as {}...".format(sender_email))
-                log_area.info("\n".join(logs))
-                server.login(sender_email, app_password)
-                logs.append("Login successful. Sending emails...")
-                log_area.info("\n".join(logs))
-                for idx, row in preview_df.iterrows():
-                    recipient = row['Email']
-                    subject = row['Email Subject']
-                    body = row['Email Body']
-                    try:
-                        logs.append(f"Sending to {recipient} (subject: {subject})...")
-                        log_area.info("\n".join(logs))
-                        msg = MIMEText(body, "plain")
-                        msg["Subject"] = subject or "Personalized Outreach"
-                        msg["From"] = sender_email
-                        msg["To"] = recipient
-                        server.sendmail(sender_email, recipient, msg.as_string())
-                        successes.append(recipient)
-                        logs.append(f"✅ Sent to {recipient}")
-                    except Exception as e:
-                        failures.append((recipient, str(e)))
-                        logs.append(f"❌ Failed to send to {recipient}: {e}")
-                    log_area.info("\n".join(logs))
-                logs.append("All emails processed.")
-                log_area.info("\n".join(logs))
-        except Exception as e:
-            logs.append(f"Critical error: {e}\n{traceback.format_exc()}")
-            log_area.error("\n".join(logs))
-        send_status.success(f"Sent {len(successes)} emails successfully.")
-        if failures:
-            send_status.error(f"Failed to send to: {', '.join([f[0] for f in failures])}")
 
     def split_subject_body(draft):
         if draft and ("\n" in draft or "\r" in draft):
@@ -302,14 +270,16 @@ Alternatively, you can create an app password by logging in to your Google accou
     if sender_email and app_password:
         send_status = st.empty()
         log_area = st.empty()
-        if st.button("Send Emails", key="send_emails_button_results"):
+        # Unique key for pre-results button
+if st.button("Send Emails", key="send_emails_button_before_results"):
             import smtplib
             from email.mime.text import MIMEText
             import traceback
             successes = []
             failures = []
             logs = []
-            try:
+            logs = []  # Always initialize logs before use
+try:
                 logs.append("Connecting to Gmail SMTP server...")
                 log_area.info("\n".join(logs))
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -346,7 +316,8 @@ Alternatively, you can create an app password by logging in to your Google accou
                 send_status.error(f"Failed to send to: {', '.join([f[0] for f in failures])}")
 
 
-        try:
+        logs = []  # Always initialize logs before use
+try:
             logs.append("Connecting to Gmail SMTP server...")
             log_area.info("\n".join(logs))
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -376,6 +347,8 @@ Alternatively, you can create an app password by logging in to your Google accou
                 logs.append("All emails processed.")
                 log_area.info("\n".join(logs))
         except Exception as e:
+            if 'logs' not in locals():
+                logs = []
             logs.append(f"Critical error: {e}\n{traceback.format_exc()}")
             log_area.error("\n".join(logs))
         send_status.success(f"Sent {len(successes)} emails successfully.")
